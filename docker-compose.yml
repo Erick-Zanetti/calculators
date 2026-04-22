@@ -1,0 +1,7 @@
+services:
+  calculadoras:
+    build: .
+    container_name: calculadoras
+    ports:
+      - "3090:80"
+    restart: unless-stopped
