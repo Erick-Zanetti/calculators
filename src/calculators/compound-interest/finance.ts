@@ -9,6 +9,12 @@ export interface CalcInput {
   period: number;
   timeUnit: TimeUnit;
   inflationAnnual?: number | null; // percentage, e.g. 4 for 4% a.a.
+  /**
+   * When true, each monthly contribution is grown by accumulated inflation
+   * (so the contribution keeps its real purchasing power over time). Only
+   * meaningful when `inflationAnnual` is set.
+   */
+  inflateContributions?: boolean;
 }
 
 export interface MonthRow {
@@ -58,22 +64,27 @@ export function calculate(input: CalcInput): CalcResult {
 
   const rows: MonthRow[] = [];
 
+  const growContributions = hasInflation && input.inflateContributions === true;
+
   let balance = input.initial;
   let invested = input.initial;
   let interestTotal = 0;
 
   for (let m = 1; m <= months; m++) {
     const interestMonth = balance * i;
-    balance = balance + interestMonth + input.monthly;
+    const contribution = growContributions
+      ? input.monthly * Math.pow(1 + f, m)
+      : input.monthly;
+    balance = balance + interestMonth + contribution;
     interestTotal += interestMonth;
-    invested += input.monthly;
+    invested += contribution;
 
     const realBalance = hasInflation ? balance / Math.pow(1 + f, m) : balance;
 
     rows.push({
       month: m,
       year: Math.ceil(m / 12),
-      contribution: input.monthly,
+      contribution,
       invested,
       interestMonth,
       interestTotal,

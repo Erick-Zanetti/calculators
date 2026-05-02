@@ -1,5 +1,3 @@
-import { useEffect, useRef, useState } from "react";
-
 interface NumberInputProps {
   value: number;
   onChange: (v: number) => void;
@@ -11,22 +9,28 @@ interface NumberInputProps {
   className?: string;
   id?: string;
   placeholder?: string;
-  /** Controls how many decimals to display on blur. Default 2. */
+  /** Fixed number of fractional digits the input always displays. Default 2. */
   decimals?: number;
-  /** When input is empty, what value to emit upstream. Default 0. */
+  /** Value emitted upstream when the user clears every digit. Default 0. */
   emptyValue?: number;
 }
 
 /**
- * Controlled numeric input that uses a local text buffer so the user can
- * freely clear / edit the field (including temporary empty state).
- * The numeric state is synced to the parent on every keystroke, but the
- * displayed text is only normalized on blur.
+ * Mask-style numeric input. The displayed text is always derived from `value`
+ * — there is no separate text buffer. Every keystroke produces a fresh
+ * numeric value, which the component re-formats to the canonical pt-BR
+ * representation. This keeps the field consistent during edits: deleting a
+ * digit shifts all the others, so "100.000,00" → backspace → "10.000,00",
+ * not "100.000,0".
+ *
+ * Behaviour mirrors what most Brazilian fintech apps do (Nubank, Itaú, etc.):
+ * only digits are accepted, the cursor is always at the end, and decimals are
+ * positioned automatically based on the `decimals` prop.
  */
 export function NumberInput({
   value,
   onChange,
-  step = 0.01,
+  step,
   min,
   max,
   suffix,
@@ -37,41 +41,31 @@ export function NumberInput({
   decimals = 2,
   emptyValue = 0,
 }: NumberInputProps) {
-  const [text, setText] = useState<string>(() => formatLocal(value, decimals));
-  const focused = useRef(false);
+  const display = formatLocal(value, decimals);
 
-  useEffect(() => {
-    if (focused.current) return;
-    // Sync from upstream when value changes externally (e.g. reset button)
-    const parsed = parseLocal(text);
-    if (!Number.isFinite(parsed) || Math.abs(parsed - value) > 1e-9) {
-      setText(formatLocal(value, decimals));
-    }
-  }, [value, decimals]);
-
-  const emit = (raw: string) => {
-    setText(raw);
-    if (raw.trim() === "" || raw === "-" || raw === ".") {
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const digitsOnly = e.target.value.replace(/\D/g, "").slice(0, 18);
+    if (digitsOnly === "") {
       onChange(emptyValue);
       return;
     }
-    const n = parseLocal(raw);
-    if (Number.isFinite(n)) {
-      let v = n;
-      if (min != null && v < min) v = min;
-      if (max != null && v > max) v = max;
-      onChange(v);
-    }
+    const intVal = Number(digitsOnly);
+    const factor = Math.pow(10, decimals);
+    let next = intVal / factor;
+    if (min != null && next < min) next = min;
+    if (max != null && next > max) next = max;
+    onChange(next);
   };
 
-  const handleBlur = () => {
-    focused.current = false;
-    if (text.trim() === "") {
-      setText(formatLocal(emptyValue, decimals));
-      return;
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    // Some browsers move the cursor on arrow keys, but our value is fully
+    // controlled by the digit string — caret position is meaningless. Block
+    // arrows so they do not visually move a cursor that is always at the end.
+    if (e.key === "ArrowLeft" || e.key === "ArrowRight") {
+      e.preventDefault();
+      const target = e.currentTarget;
+      target.setSelectionRange(target.value.length, target.value.length);
     }
-    const n = parseLocal(text);
-    setText(formatLocal(Number.isFinite(n) ? n : emptyValue, decimals));
   };
 
   return (
@@ -91,14 +85,11 @@ export function NumberInput({
           paddingLeft: prefix ? 34 : undefined,
           paddingRight: suffix ? 34 : undefined,
         }}
-        value={text}
+        value={display}
         step={step}
-        onFocus={(e) => {
-          focused.current = true;
-          e.currentTarget.select();
-        }}
-        onChange={(e) => emit(e.target.value)}
-        onBlur={handleBlur}
+        onFocus={(e) => e.currentTarget.select()}
+        onChange={handleChange}
+        onKeyDown={handleKeyDown}
       />
       {suffix && (
         <span className="absolute right-3 top-1/2 -translate-y-1/2 text-text-dim text-sm pointer-events-none">
@@ -107,12 +98,6 @@ export function NumberInput({
       )}
     </div>
   );
-}
-
-function parseLocal(s: string): number {
-  if (!s) return NaN;
-  const cleaned = s.replace(/\s/g, "").replace(/\./g, "").replace(",", ".");
-  return Number(cleaned);
 }
 
 function formatLocal(v: number, digits: number): string {

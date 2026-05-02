@@ -24,6 +24,7 @@ export function CompoundInterestCalculator() {
   const [timeUnit, setTimeUnit] = useState<TimeUnit>("years");
   const [useInflation, setUseInflation] = useState(false);
   const [inflation, setInflation] = useState(4);
+  const [inflateContributions, setInflateContributions] = useState(false);
 
   const result = useMemo(
     () =>
@@ -35,8 +36,19 @@ export function CompoundInterestCalculator() {
         period,
         timeUnit,
         inflationAnnual: useInflation ? inflation : null,
+        inflateContributions: useInflation && inflateContributions,
       }),
-    [initial, monthly, rate, ratePeriod, period, timeUnit, useInflation, inflation],
+    [
+      initial,
+      monthly,
+      rate,
+      ratePeriod,
+      period,
+      timeUnit,
+      useInflation,
+      inflation,
+      inflateContributions,
+    ],
   );
 
   const months = monthsFromInput(period, timeUnit);
@@ -50,6 +62,7 @@ export function CompoundInterestCalculator() {
     setTimeUnit("years");
     setUseInflation(false);
     setInflation(4);
+    setInflateContributions(false);
   };
 
   return (
@@ -160,6 +173,29 @@ export function CompoundInterestCalculator() {
                   {t.form.inflationHint}
                   <b className="text-text">{t.form.inflationHintBold}</b>
                 </p>
+              </div>
+
+              <div className="md:col-span-2 mt-1">
+                <label className="flex items-start gap-3 cursor-pointer select-none">
+                  <span className="relative inline-block w-10 h-6 mt-0.5 flex-shrink-0">
+                    <input
+                      type="checkbox"
+                      checked={inflateContributions}
+                      onChange={(e) => setInflateContributions(e.target.checked)}
+                      className="sr-only peer"
+                    />
+                    <span className="absolute inset-0 rounded-full bg-[rgba(38,48,99,0.7)] peer-checked:bg-[rgba(245,158,11,0.65)] transition-colors" />
+                    <span className="absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white shadow peer-checked:translate-x-4 transition-transform" />
+                  </span>
+                  <span className="flex flex-col gap-0.5">
+                    <span className="text-sm text-text">
+                      {t.form.inflateContributions}
+                    </span>
+                    <span className="text-xs text-text-mute leading-relaxed">
+                      {t.form.inflateContributionsHint}
+                    </span>
+                  </span>
+                </label>
               </div>
             </div>
           )}

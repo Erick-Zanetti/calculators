@@ -210,24 +210,35 @@ export function GrowthChart({ result }: GrowthChartProps) {
         )}
       </svg>
 
-      {hovered && (
-        <div className="mt-3 px-3 py-2 rounded-lg bg-[rgba(11,16,32,0.6)] border border-[rgba(38,48,99,0.65)] text-xs text-text-dim flex flex-wrap gap-x-5 gap-y-1">
-          <span>
-            {t.chart.month} <span className="text-text font-medium">{hovered.monthIndex}</span>
+      <div
+        className={`mt-3 px-3 py-2 rounded-lg bg-[rgba(11,16,32,0.6)] border border-[rgba(38,48,99,0.65)] text-xs text-text-dim flex flex-wrap gap-x-5 gap-y-1 transition-opacity ${hovered ? "opacity-100" : "opacity-0"}`}
+        aria-hidden={!hovered}
+      >
+        <span>
+          {t.chart.month}{" "}
+          <span className="text-text font-medium">{hovered ? hovered.monthIndex : "—"}</span>
+        </span>
+        <span>
+          {t.chart.balance}{" "}
+          <span className="text-text font-medium">
+            {hovered ? formatMoney(hovered.balance, locale) : "—"}
           </span>
-          <span>
-            {t.chart.balance} <span className="text-text font-medium">{formatMoney(hovered.balance, locale)}</span>
+        </span>
+        <span>
+          {t.chart.investedShort}{" "}
+          <span className="text-text font-medium">
+            {hovered ? formatMoney(hovered.invested, locale) : "—"}
           </span>
+        </span>
+        {result.hasInflation && (
           <span>
-            {t.chart.investedShort} <span className="text-text font-medium">{formatMoney(hovered.invested, locale)}</span>
-          </span>
-          {result.hasInflation && (
-            <span>
-              {t.chart.real} <span className="text-text font-medium">{formatMoney(hovered.realBalance, locale)}</span>
+            {t.chart.real}{" "}
+            <span className="text-text font-medium">
+              {hovered ? formatMoney(hovered.realBalance, locale) : "—"}
             </span>
-          )}
-        </div>
-      )}
+          </span>
+        )}
+      </div>
     </div>
   );
 }
